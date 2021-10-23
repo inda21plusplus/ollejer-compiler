@@ -1,0 +1,1 @@
+/home/ollejernstrom/plusplus/compiler/target/debug/main: /home/ollejernstrom/plusplus/compiler/main/src/errors.rs /home/ollejernstrom/plusplus/compiler/main/src/finshell.rs /home/ollejernstrom/plusplus/compiler/main/src/main.rs /home/ollejernstrom/plusplus/compiler/main/src/token.rs

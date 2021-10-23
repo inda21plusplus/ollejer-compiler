@@ -1,0 +1,12 @@
+
+
+tominto = function
+muuttuja = a variable => let/var = muut
+palata = return
+
+integer = kokonaisluku => int = kok
+text string = tekstimerkkijono => string = teksti
+floating point = liukuluku => float = liu
+
+
+

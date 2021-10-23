@@ -1,0 +1,10 @@
+
+
+
+tominto main(arg1: kok, arg2: liu): teksti {
+    muut varname1: kok = arg1*2;
+    muut varname2: liu = arg2/4.0;
+
+    palata str(varname1)
+}
+
