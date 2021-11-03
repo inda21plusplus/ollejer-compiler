@@ -1,0 +1,7 @@
+expression => term (+|- term..)
+
+term => factor (*|/ factor..)
+
+factor => Int|Float
+       => (+|-) factor
+       => lparen expr rparen
