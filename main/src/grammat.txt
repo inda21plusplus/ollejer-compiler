@@ -1,7 +1,18 @@
-expression => term (+|- term..)
+expression    => Keyword:muut Identifier Equals expression
+              => term (+|- term..)
 
 term => factor (*|/ factor..)
 
-factor => Int|Float
-       => (+|-) factor
+factor => (+|-) factor
+
+power => atom(¤ factor..) 
+       
+atom   => Int|Float|Identifier
        => lparen expr rparen
+
+
+
+
+variables:
+       muut  
+       Note: muut x = 5 * 5 <==> muut x = (5 * 5)

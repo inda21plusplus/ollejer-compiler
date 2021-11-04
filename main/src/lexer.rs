@@ -3,7 +3,9 @@ use crate::errors::ErrorType;
 use crate::position::Position;
 use crate::token::{
     Token,
-    TokenType::{self, Divide, EndOfFile, Float, Int, LParen, Minus, Multiply, Plus, RParen},
+    TokenType::{
+        self, Divide, EndOfFile, Equal, Float, Int, LParen, Minus, Multiply, Plus, Pow, RParen,
+    },
 };
 
 #[derive(Debug)]
@@ -35,6 +37,7 @@ impl Lexer {
 
     // TODO CHECK IF ERROR IN RESULT RETURN SHOULD BE ERROR TRAIT / ILLIGALCHAR STRUCT
     pub fn tokenize(&mut self) -> Result<Vec<Token>, ErrorType> {
+        let keywords = vec!["muut".to_string()];
         let mut tokens: Vec<Token> = Vec::new();
         while let Some(current) = self.current_char {
             match current {
@@ -44,9 +47,15 @@ impl Lexer {
                 '*' => tokens.push(Token::new(Multiply, Some(self.pos.clone()), None)),
                 '/' => tokens.push(Token::new(Divide, Some(self.pos.clone()), None)),
                 '(' => tokens.push(Token::new(LParen, Some(self.pos.clone()), None)),
+                '^' => tokens.push(Token::new(Pow, Some(self.pos.clone()), None)),
+                '=' => tokens.push(Token::new(Equal, Some(self.pos.clone()), None)),
                 ')' => tokens.push(Token::new(RParen, Some(self.pos.clone()), None)),
                 '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                     tokens.push(self.construct_number());
+                    continue;
+                }
+                a if a.is_ascii_alphabetic() || a == '_' => {
+                    tokens.push(self.construct_identifier(keywords.clone()));
                     continue;
                 }
                 _ => {
@@ -64,8 +73,33 @@ impl Lexer {
             self.advance()
         }
 
-        tokens.push(Token::new(EndOfFile, Some(self.pos.clone()), None));
+        tokens.push(Token::new(
+            EndOfFile,
+            Some(self.pos.clone()),
+            Some(self.pos.clone()),
+        ));
         Ok(tokens)
+    }
+    fn construct_identifier(&mut self, keywords: Vec<String>) -> Token {
+        let mut identifier_string = String::new();
+        let pos_start = self.pos.clone();
+
+        while let Some(current) = self.current_char {
+            if !(current.is_alphabetic() || current.is_digit(10) || current == '_') {
+                break;
+            }
+            identifier_string.push(current);
+            self.advance()
+        }
+
+        let token_type: TokenType;
+        if keywords.contains(&identifier_string) {
+            token_type = TokenType::Keyword(identifier_string)
+        } else {
+            token_type = TokenType::Identifier(identifier_string);
+        }
+
+        return Token::new(token_type, Some(pos_start), Some(self.pos.clone()));
     }
 
     // TODO MAKE THIS RETURN A RESULT INSTEAD OF PANIC
@@ -80,7 +114,7 @@ impl Lexer {
             }
             if current == '.' {
                 if dot_count >= 1 {
-                    panic!("To many dots in number!");
+                    panic!("To many dots in number!"); // FIXXX
                 }
                 dot_count += 1;
             }
@@ -131,6 +165,7 @@ mod tests {
             LParen,
             Int(3),
             RParen,
+            EndOfFile,
         ];
         //println!("{:?}", given_tokens);
         //println!("{:?}", expected_tokens);
@@ -139,8 +174,23 @@ mod tests {
 
     #[test]
     fn test_int() {
+        println!(
+            "{:?} {:?}",
+            vec![
+                TokenType::Int(1),
+                TokenType::Plus,
+                TokenType::Int(3),
+                TokenType::EndOfFile
+            ],
+            get_token_types_from_str("1+3")
+        );
         assert_eq!(
-            vec![TokenType::Int(1), TokenType::Plus, TokenType::Int(3)],
+            vec![
+                TokenType::Int(1),
+                TokenType::Plus,
+                TokenType::Int(3),
+                TokenType::EndOfFile
+            ],
             get_token_types_from_str("1+3"),
         )
     }
@@ -151,10 +201,11 @@ mod tests {
             TokenType::Float(2.8),
             TokenType::Plus,
             TokenType::Float(3.0),
+            TokenType::EndOfFile,
         ];
         let given = get_token_types_from_str("2.8+3.0");
-        //println!("{:?}", valid);
-        //println!("{:?}", given);
+        println!("{:?}", valid);
+        println!("{:?}", given);
         assert_eq!(valid, given)
     }
 
@@ -168,5 +219,19 @@ mod tests {
             get_token_types_from_str("1+ 3.0"),
             get_token_types_from_str("1 +3.0")
         );
+    }
+    #[test]
+    fn test_keyword_and_identifier() {
+        let valid_tokens: Vec<TokenType> = vec![
+            TokenType::Keyword("muut".to_string()),
+            TokenType::Identifier("a".to_string()),
+            TokenType::Equal,
+            TokenType::Int(5),
+            TokenType::EndOfFile,
+        ];
+
+        let given = get_token_types_from_str("muut a = 5");
+        println!("{:?}", valid_tokens);
+        println!("{:?}", given); //LEXER
     }
 }

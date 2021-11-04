@@ -10,11 +10,19 @@ pub enum TokenType {
     Minus,
     Multiply,
     Divide,
+    Pow, // ¤ <- Symbol
     LParen,
     RParen,
     String(String),
     Invalid,
     EndOfFile,
+    Identifier(String),
+    Keyword(String),
+    Equal,
+}
+
+pub enum Keyword {
+    Func(),
 }
 
 impl Default for TokenType {

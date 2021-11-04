@@ -3,7 +3,10 @@ use crate::lexer::Lexer;
 use crate::position::Position;
 use crate::token::{
     Token,
-    TokenType::{self, Divide, Float, Int, LParen, Minus, Multiply, Plus, RParen, String},
+    TokenType::{
+        self, Divide, Equal, Float, Identifier, Int, Keyword, LParen, Minus, Multiply, Plus, Pow,
+        RParen, String,
+    },
 };
 use std::fmt;
 use strum::IntoEnumIterator;
@@ -14,6 +17,8 @@ pub enum Node {
     Binop(Box<Node>, Token, Box<Node>),
     Value(Token),
     Unary(Token, Box<Node>),
+    VarAccessNode(Token),
+    VarAssignNode(Token, Box<Node>),
 }
 
 impl Default for Node {
@@ -28,6 +33,8 @@ impl fmt::Display for Node {
             Node::Binop(left, op, right) => write!(f, "[{}, {}, {}]", left, op, right),
             Node::Value(val) => write!(f, "{}", val),
             Node::Unary(optok, node) => write!(f, "[{}, {}]", optok, node),
+            Node::VarAssignNode(optok, node) => write!(f, "[{}, {}]", optok, node),
+            Node::VarAccessNode(id) => write!(f, "{}", id),
         }
     }
 }
@@ -67,9 +74,7 @@ impl Parser {
         result
     }
 
-    fn factor(&mut self) -> Result<Node, ErrorType> {
-        //println!("{:?}", self.tokens);
-        //println!("{:?} {:?}", self.token_index, self.current_token);
+    fn atom(&mut self) -> Result<Node, ErrorType> {
         let token = self.current_token.clone();
         match token.type_() {
             Int(_) | Float(_) => {
@@ -77,13 +82,10 @@ impl Parser {
                 Ok(Node::Value(token))
             }
 
-            Plus | Minus => {
+            Identifier(_) => {
+                println!("Found Identifier");
                 self.advance();
-                let result = self.factor();
-                match result {
-                    Ok(factor) => Ok(Node::Unary(token, Box::new(factor))),
-                    Err(e) => Err(e),
-                }
+                return Ok(Node::VarAccessNode(token));
             }
 
             LParen => {
@@ -105,13 +107,35 @@ impl Parser {
                     }
                 }
             }
-
             _ => Err(ErrorType::SyntaxError(SyntaxError::new(
                 token.position_start(),
                 token.position_end(),
-                "Expected Int or Float".to_string(),
+                "Expected Int, Float, or '+', '-', '('".to_string(),
             ))),
         }
+    }
+
+    fn power(&mut self) -> Result<Node, ErrorType> {
+        let valid_operations = vec![Pow];
+        self.binary_operation(Self::atom, valid_operations)
+    }
+
+    fn factor(&mut self) -> Result<Node, ErrorType> {
+        //println!("{:?}", self.tokens);
+        //println!("{:?} {:?}", self.token_index, self.current_token);
+        let token = self.current_token.clone();
+        match token.type_() {
+            Plus | Minus => {
+                self.advance();
+                let result = self.factor();
+                match result {
+                    Ok(factor) => return Ok(Node::Unary(token, Box::new(factor))),
+                    Err(e) => return Err(e),
+                }
+            }
+            _ => (),
+        };
+        self.power()
     }
 
     fn term(&mut self) -> Result<Node, ErrorType> {
@@ -120,6 +144,51 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Node, ErrorType> {
+        match &self.current_token.type_() {
+            Keyword(val) => {
+                if *val == "muut" {
+                    println!("Recognized Keyword 'muut'");
+                    self.advance();
+                    match &self.current_token.type_() {
+                        Identifier(_name) => {
+                            println!("Found Identifier");
+                            let variable_name = self.current_token.clone();
+                            self.advance();
+                            match &self.current_token.type_() {
+                                Equal => {
+                                    self.advance();
+                                    let expression = match self.expression() {
+                                        Ok(node) => node,
+                                        Err(e) => return Err(e),
+                                    };
+
+                                    return Ok(Node::VarAssignNode(
+                                        variable_name,
+                                        Box::new(expression),
+                                    ));
+                                }
+                                _ => {
+                                    return Err(ErrorType::SyntaxError(SyntaxError::new(
+                                        self.current_token.position_start(),
+                                        self.current_token.position_end(),
+                                        "Expected '='".to_string(),
+                                    )))
+                                }
+                            }
+                        }
+                        t => {
+                            return Err(ErrorType::SyntaxError(SyntaxError::new(
+                                self.current_token.position_start(),
+                                self.current_token.position_end(),
+                                format!("Expected Identifier. Found {:?}", t),
+                            )))
+                        }
+                    };
+                }
+            }
+            _ => {}
+        }
+
         let valid_operations = vec![Plus, Minus];
         self.binary_operation(Self::term, valid_operations)
     }
@@ -159,6 +228,8 @@ fn print_ast(root: Node) {
         Node::Unary(_op, node) => {
             print_ast(*node);
         }
+        Node::VarAssignNode(_op, node) => print_ast(*node),
+        Node::VarAccessNode(_) => {}
     }
 }
 
@@ -187,7 +258,7 @@ mod tests {
     #[test]
     fn test_parser() {
         let ast = get_ast_from_string("3*4+5/5");
-        println!("AST: {:?}", ast);
+        println!("AST: {}", ast);
     }
 
     #[test]

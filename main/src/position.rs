@@ -45,4 +45,7 @@ impl Position {
     pub fn file_name(&self) -> String {
         self.file_name.clone()
     }
+    pub fn file_text(&self) -> String {
+        self.file_text.clone()
+    }
 }
